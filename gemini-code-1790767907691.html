@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>簡単LINE風チャット（津野廉太朗作）</title>
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: sans-serif; background: #7494c0; display: flex; flex-direction: column; height: 100vh; }
+    header { background: #2c3e50; color: white; padding: 12px; text-align: center; }
+    .author { font-size: 11px; color: #a0aec0; margin-top: 2px; letter-spacing: 0.5px; }
+    #chat-box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .msg { max-width: 70%; padding: 10px 14px; border-radius: 15px; word-wrap: break-word; font-size: 14px; }
+    .my-msg { align-self: flex-end; background: #85e249; color: #000; border-bottom-right-radius: 2px; }
+    .peer-msg { align-self: flex-start; background: #ffffff; color: #000; border-bottom-left-radius: 2px; }
+    footer { display: flex; padding: 10px; background: #eeeeee; }
+    input { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+    button { margin-left: 8px; padding: 10px 16px; background: #00b900; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; }
+    #status { font-size: 12px; color: #bdc3c7; margin-top: 6px; word-break: break-all; }
+  </style>
+</head>
+<body>
+
+<!-- Produced by 津野廉太朗 -->
+<header>
+  <h3>LINE風トークルーム</h3>
+  <div class="author">津野廉太朗作</div>
+  <div id="status">接続を準備中...</div>
+</header>
+
+<div id="chat-box"></div>
+
+<footer>
+  <input type="text" id="message-input" placeholder="メッセージを入力..." disabled />
+  <button id="send-btn" disabled>送信</button>
+</footer>
+
+<script>
+  const statusEl = document.getElementById('status');
+  const chatBox = document.getElementById('chat-box');
+  const inputEl = document.getElementById('message-input');
+  const sendBtn = document.getElementById('send-btn');
+
+  let conn = null;
+  const targetPeerId = window.location.hash.substring(1);
+
+  const peer = new Peer();
+
+  peer.on('open', (id) => {
+    if (!targetPeerId) {
+      const roomUrl = `${window.location.href}#${id}`;
+      statusEl.innerHTML = `招待URL: <a href="${roomUrl}" target="_blank" style="color:#00ffff">${roomUrl}</a>（相手に共有してください）`;
+      
+      peer.on('connection', (c) => {
+        conn = c;
+        setupChat();
+      });
+    } else {
+      statusEl.textContent = '相手に接続中...';
+      conn = peer.connect(targetPeerId);
+      conn.on('open', () => {
+        setupChat();
+      });
+    }
+  });
+
+  function setupChat() {
+    statusEl.textContent = '🟢 チャット接続中';
+    inputEl.disabled = false;
+    sendBtn.disabled = false;
+
+    conn.on('data', (data) => {
+      addMessage(data, 'peer');
+    });
+  }
+
+  function sendMessage() {
+    const text = inputEl.value.trim();
+    if (!text || !conn) return;
+    conn.send(text);
+    addMessage(text, 'my');
+    inputEl.value = '';
+  }
+
+  function addMessage(text, sender) {
+    const div = document.createElement('div');
+    div.classList.add('msg', sender === 'my' ? 'my-msg' : 'peer-msg');
+    div.textContent = text;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  inputEl.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+</script>
+
+</body>
+</html>
